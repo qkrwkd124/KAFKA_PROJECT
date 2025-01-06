@@ -1,0 +1,133 @@
+version: '2'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper-1
+    #build: .
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+    user: "1000"
+    volumes:
+      - "./zookeeper/data:/var/lib/zookeeper/data"
+      - "./zookeeper/secrets:/var/lib/zookeeper/secrets"
+      - "./zookeeper/log:/var/lib/zookeeper/log"
+    ports:
+      - "22181:2181"
+    healthcheck:
+      test: nc -z localhost 2181 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka1:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+    volumes:
+      - "./kafka1/data:/var/lib/kafka/data"
+      - "./kafka1/secrets:/var/lib/kafka/secrets"
+      - "./kafka1/logs:/var/lib/kafka/logs"
+    environment:
+      KAFKA_BROKER_ID: 1 # broker id
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
+    user: "1000"
+    healthcheck:
+      test: nc -z localhost 29092 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-2
+    depends_on:
+      - zookeeper
+    ports:
+      - "29093:29093"
+    volumes:
+      - "./kafka2/data:/var/lib/kafka/data"
+      - "./kafka2/secrets:/var/lib/kafka/secrets"
+      - "./kafka2/log:/var/lib/kafka/logs"
+    environment:
+      KAFKA_BROKER_ID: 2 # broker id
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093,PLAINTEXT_HOST://localhost:29093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
+    user: "1000"
+    healthcheck:
+      test: nc -z localhost 29093 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka3:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-3
+    depends_on:
+      - zookeeper
+    ports:
+      - "29094:29094"
+    volumes:
+      - "./kafka3/data:/var/lib/kafka/data"
+      - "./kafka3/secrets:/var/lib/kafka/secrets"
+      - "./kafka3/log:/var/lib/kafka/logs"
+    environment:
+      KAFKA_BROKER_ID: 3 # broker id
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094,PLAINTEXT_HOST://localhost:29094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
+    user: "1000"
+    healthcheck:
+      test: nc -z localhost 29094 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    restart: "no"
+    ports: 
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka1:9092"
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: kafka-ui
+  #   ports: 
+  #     - "8989:8080"
+  #   restart: always
+  #   environment:
+  #     - KAFKA_CLUSTERS_0_NAME=local
+  #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:29092
+  #     - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper-1:2181

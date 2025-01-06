@@ -1,0 +1,6 @@
+FROM apache/airflow:2.5.3-python3.10
+
+RUN pip install apache-airflow-providers-apache-spark
+RUN pip install apache-airflow-providers-apache-kafka
+
+
