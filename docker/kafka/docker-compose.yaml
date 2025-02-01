@@ -1,5 +1,9 @@
 version: '2'
 
+networks:
+  kafka-net:
+    driver: bridge
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -24,6 +28,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - kafka-net
 
   kafka1:
     image: confluentinc/cp-kafka:latest
@@ -52,6 +58,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - kafka-net
 
   kafka2:
     image: confluentinc/cp-kafka:latest  
@@ -80,6 +88,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - kafka-net
 
   kafka3:
     image: confluentinc/cp-kafka:latest
@@ -109,17 +119,23 @@ services:
       retries: 5
       start_period: 10s
 
+    networks:
+      - kafka-net
+
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
     restart: "no"
     ports: 
       - "9000:9000"
     environment:
-      KAFKA_BROKERCONNECT: "kafka1:9092"
+      KAFKA_BROKERCONNECT: "kafka1:9092,kafka2:9093,kafka3:9094"
     depends_on:
       - kafka1
       - kafka2
       - kafka3
+    
+    networks:
+      - kafka-net
 
   # kafka-ui:
   #   image: provectuslabs/kafka-ui:latest
