@@ -5,6 +5,7 @@ from confluent_kafka.admin import NewPartitions, AdminClient, NewTopic
 # Kafka AdminClient 생성
 admin_client = AdminClient({'bootstrap.servers':'localhost:29092,localhost:29093,localhost:29094'})
 
+# 토픽정보
 def get_topic_info(topic_name:str) -> None :
     metadata = admin_client.list_topics(timeout=5)
     topic_metadata = metadata.topics.get(topic_name)
@@ -15,7 +16,7 @@ def get_topic_info(topic_name:str) -> None :
     else:
         print("Topic 'example_topic' does not exist.")
 
-
+# 토픽생성
 def create_topic(topic_name:str) -> None :
 
     new_topic = NewTopic(
@@ -28,12 +29,15 @@ def create_topic(topic_name:str) -> None :
 
     print("Topic 'example_topic' created successfully!")
 
+# 토픽삭제
 def delete_topic(topic_name:str) -> None :
 
     admin_client.delete_topic([topic_name])
     
     print("Topic 'example_topic' deleted successfully!")
-    
+
+
+
 
 if __name__ == '__main__' :
 
