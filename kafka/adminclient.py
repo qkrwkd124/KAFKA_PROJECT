@@ -14,7 +14,7 @@ def get_topic_info(topic_name:str) -> None :
         print(f"Topic: {topic_metadata.topic}")
         print(f"Partitions: {len(topic_metadata.partitions)}")
     else:
-        print("Topic 'example_topic' does not exist.")
+        print(f"Topic '{topic_name}' does not exist.")
 
 # 토픽생성
 def create_topic(topic_name:str) -> None :
@@ -24,23 +24,33 @@ def create_topic(topic_name:str) -> None :
         num_partitions=3,       # 파티션 수
         replication_factor=1    # 복제 계수
     )
-    
-    admin_client.create_topics([new_topic])
+    try :
+        futures = admin_client.create_topics([new_topic])
+        # 각 토픽 생성 Future의 결과를 확인합니다.
+        for topic, future in futures.items():
+            try:
+                # future.result()를 호출하여 작업 완료까지 기다립니다.
+                future.result(timeout=10)
+                print(f"Topic '{topic}' created successfully!")
+            except Exception as e:
+                print(f"Failed to create topic '{topic}': {e}")
+        
+        # print(f"Topic '{topic_name}' created successfully!")
+    except Exception as e :
+        print(e)
 
-    print("Topic 'example_topic' created successfully!")
 
 # 토픽삭제
 def delete_topic(topic_name:str) -> None :
 
-    admin_client.delete_topic([topic_name])
+    admin_client.delete_topics([topic_name])
     
     print("Topic 'example_topic' deleted successfully!")
 
 
-
-
 if __name__ == '__main__' :
 
-    topic_name = "LogTopic"
-    # create_topic()
-    get_topic_info(topic_name)
+    topic_name = "sensor-data"
+    
+    create_topic(topic_name)
+    # get_topic_info(topic_name)
