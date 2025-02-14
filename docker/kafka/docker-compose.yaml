@@ -1,149 +1,78 @@
-version: '2'
+version: '1'
 
+# Kafka 및 Zookeeper가 사용할 네트워크 설정
 networks:
   kafka-net:
     driver: bridge
 
 services:
+  # Zookeeper 서비스: Kafka 클러스터 메타데이터 관리를 위해 필요
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     container_name: zookeeper
-    #build: .
     environment:
-      ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_INIT_LIMIT: 5
-      ZOOKEEPER_SYNC_LIMIT: 2
-    user: "1000:1000"
+      ZOOKEEPER_SERVER_ID: 1                # Zookeeper 서버 식별자
+      ZOOKEEPER_CLIENT_PORT: 2181             # 클라이언트 접속 포트
+      ZOOKEEPER_TICK_TIME: 2000               # 내부 타이머 설정 (밀리초 단위)
+      ZOOKEEPER_INIT_LIMIT: 5                 # 초기 연결 제한
+      ZOOKEEPER_SYNC_LIMIT: 2                 # 동기화 제한
+    user: "1000:1000"                         # 컨테이너 내부 실행 사용자 (호스트 권한과 일치)
     volumes:
-      - "${KAFKA_DATA_DIR:-.}/zookeeper/data:/var/lib/zookeeper/data"
-      - "${KAFKA_DATA_DIR:-.}/zookeeper/secrets:/var/lib/zookeeper/secrets"
-      - "${KAFKA_LOG_DIR:-.}/zookeeper/log:/var/lib/zookeeper/log"
+      - "${KAFKA_DATA_DIR:-.}/zookeeper/data:/var/lib/zookeeper/data"       # Zookeeper 데이터 저장 디렉토리
+      - "${KAFKA_DATA_DIR:-.}/zookeeper/secrets:/var/lib/zookeeper/secrets" # 비밀 데이터 저장 경로
+      - "${KAFKA_LOG_DIR:-.}/zookeeper/log:/var/lib/zookeeper/log"          # 로그 파일 저장 경로
     ports:
-      - "2181:2181"
+      - "2181:2181"                         # 호스트와 컨테이너의 포트 매핑
     healthcheck:
-      test: nc -z localhost 2181 || exit 1
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: nc -z localhost 2181 || exit 1    # 2181 포트 연결 상태 확인
+      interval: 30s                         # healthcheck 실행 간격
+      timeout: 5s                           # healthcheck 타임아웃
+      retries: 5                            # 재시도 횟수
+      start_period: 10s                     # 컨테이너 시작 후 healthcheck 시작까지 대기 시간
     networks:
-      - kafka-net
+      - kafka-net                         # 지정된 네트워크 사용
 
-  kafka1:
+  # 단일 Kafka 브로커 서비스
+  kafka:
     image: confluentinc/cp-kafka:latest
-    container_name: kafka-1
+    container_name: kafka
     depends_on:
-      - zookeeper
+      - zookeeper                         # Zookeeper가 먼저 실행되어야 함
     ports:
-      - "29092:29092"
+      - "29092:29092"                     # 호스트와 컨테이너의 포트 매핑 (외부 접근용)
     volumes:
-      - "${KAFKA_DATA_DIR:-.}/kafka1/data:/var/lib/kafka/data"
-      - "${KAFKA_DATA_DIR:-.}/kafka1/secrets:/var/lib/kafka/secrets"
-      - "${KAFKA_LOG_DIR:-.}/kafka1/logs:/var/lib/kafka/logs"
+      - "${KAFKA_DATA_DIR:-.}/kafka/data:/var/lib/kafka/data"            # Kafka 데이터 저장 디렉토리
+      - "${KAFKA_DATA_DIR:-.}/kafka/secrets:/var/lib/kafka/secrets"        # 비밀 데이터 저장 경로
+      - "${KAFKA_LOG_DIR:-.}/kafka/logs:/var/lib/kafka/logs"               # 로그 파일 저장 경로
     environment:
-      KAFKA_BROKER_ID: 1 # broker id
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092,PLAINTEXT_HOST://localhost:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
-    user: "1000:1000"
+      KAFKA_BROKER_ID: 1                  # Kafka 브로커 식별자
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'  # Zookeeper 연결 정보
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092  
+                                            # 내부용 리스너(kafka:9092)와 외부용 리스너(localhost:29092) 설정
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  
+                                            # 리스너별 보안 프로토콜 (암호화 없이 사용)
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT  # 브로커 간 통신 시 사용할 리스너 이름
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1   # 단일 브로커이므로 복제 계수를 1로 설정
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0     # 소비자 그룹 초기 재분배 지연 시간 (0ms)
+    user: "1000:1000"                    # 컨테이너 내부 실행 사용자 (호스트 권한과 일치)
     healthcheck:
-      test: nc -z localhost 29092 || exit 1
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: nc -z localhost 29092 || exit 1  # 29092 포트 연결 상태 확인
+      interval: 30s                         # healthcheck 실행 간격
+      timeout: 5s                           # healthcheck 타임아웃
+      retries: 5                            # 재시도 횟수
+      start_period: 10s                     # 컨테이너 시작 후 healthcheck 시작까지 대기 시간
     networks:
-      - kafka-net
+      - kafka-net                         # 지정된 네트워크 사용
 
-  kafka2:
-    image: confluentinc/cp-kafka:latest  
-    container_name: kafka-2
-    depends_on:
-      - zookeeper
-    ports:
-      - "29093:29093"
-    volumes:
-      - "${KAFKA_DATA_DIR:-.}/kafka2/data:/var/lib/kafka/data"
-      - "${KAFKA_DATA_DIR:-.}/kafka2/secrets:/var/lib/kafka/secrets"
-      - "${KAFKA_LOG_DIR:-.}/kafka2/log:/var/lib/kafka/logs"
-    environment:
-      KAFKA_BROKER_ID: 2 # broker id
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9093,PLAINTEXT_HOST://localhost:29093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
-    user: "1000:1000"
-    healthcheck:
-      test: nc -z localhost 29093 || exit 1
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - kafka-net
-
-  kafka3:
-    image: confluentinc/cp-kafka:latest
-    container_name: kafka-3
-    depends_on:
-      - zookeeper
-    ports:
-      - "29094:29094"
-    volumes:
-      - "${KAFKA_DATA_DIR:-.}/kafka3/data:/var/lib/kafka/data"
-      - "${KAFKA_DATA_DIR:-.}/kafka3/secrets:/var/lib/kafka/secrets"
-      - "${KAFKA_LOG_DIR:-.}/kafka3/log:/var/lib/kafka/logs"
-    environment:
-      KAFKA_BROKER_ID: 3 # broker id
-      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9094,PLAINTEXT_HOST://localhost:29094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      #KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
-    user: "1000:1000"
-    healthcheck:
-      test: nc -z localhost 29094 || exit 1
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-    networks:
-      - kafka-net
-
+  # Kafdrop: Kafka 웹 UI 도구 (토픽, 메시지 모니터링)
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
-    restart: "no"
+    restart: "no"                          # 자동 재시작 사용 안 함 (테스트 목적)
     ports: 
-      - "9000:9000"
+      - "9000:9000"                       # 호스트와 컨테이너의 포트 매핑
     environment:
-      KAFKA_BROKERCONNECT: "kafka1:9092,kafka2:9093,kafka3:9094"
+      KAFKA_BROKERCONNECT: "kafka:9092"    # Kafka 브로커 연결 정보 (내부 네트워크 주소)
     depends_on:
-      - kafka1
-      - kafka2
-      - kafka3
-    
+      - kafka                             # Kafka 서비스가 먼저 실행되어야 함
     networks:
-      - kafka-net
-
-  # kafka-ui:
-  #   image: provectuslabs/kafka-ui:latest
-  #   container_name: kafka-ui
-  #   ports: 
-  #     - "8989:8080"
-  #   restart: always
-  #   environment:
-  #     - KAFKA_CLUSTERS_0_NAME=local
-  #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-1:29092
-  #     - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper-1:2181
+      - kafka-net                         # 지정된 네트워크 사용
