@@ -48,12 +48,27 @@ transformed_df = parsed_df.withColumn("timestamp",date_format(to_timestamp(col("
                             .withColumnRenamed("timestamp","sensor_date")
 
 
-query = transformed_df.writeStream\
+valid_df = transformed_df.filter((col("value") >= 20) & (col("value") <= 25))
+invalid_df = transformed_df.filter((col("value") > 25) & (col("value") <= 30))
+
+# Kafka Sink에 메시지를 쓸 때는 메시지의 key와 value를 문자열(String) 혹은 바이너리(ByteType) 형태로 전달해야 한다.
+invalid_df = invalid_df.selectExpr("CAST(sensor_id AS STRING) AS value")
+
+valid_query = valid_df.writeStream\
     .foreachBatch(write_to_db)\
     .outputMode("append")\
     .start()
 
-query.awaitTermination()
+# 유효하지 않은 데이터는 kafka 토픽으로 전송
+invalid_query = invalid_df.writeStream\
+    .format("kafka")\
+    .option("kafka.bootstrap.servers","localhost:29092")\
+    .option("topic","invalid-sensor-data")\
+    .option("checkpointLocation","/home/younpark/KAFKA_PROJECT/kafka/checkpoints/invalid_sensor")\
+    .start()
+
+valid_query.awaitTermination()
+invalid_query.awaitTermination()
 
 
 
