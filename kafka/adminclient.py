@@ -3,7 +3,8 @@ from confluent_kafka.admin import NewPartitions, AdminClient, NewTopic
 
 
 # Kafka AdminClient 생성
-admin_client = AdminClient({'bootstrap.servers':'localhost:29092,localhost:29093,localhost:29094'})
+# admin_client = AdminClient({'bootstrap.servers':'localhost:29092,localhost:29093,localhost:29094'})
+admin_client = AdminClient({'bootstrap.servers':'localhost:29092'})
 
 # 토픽정보
 def get_topic_info(topic_name:str) -> None :
@@ -43,14 +44,18 @@ def create_topic(topic_name:str) -> None :
 # 토픽삭제
 def delete_topic(topic_name:str) -> None :
 
-    admin_client.delete_topics([topic_name])
-    
-    print("Topic 'example_topic' deleted successfully!")
+    try :
+        admin_client.delete_topics([topic_name])
+        print(f"Topic '{topic_name}' deleted successfully!")
+    except Exception as e :
+        print(e)
 
 
 if __name__ == '__main__' :
 
+    # topic_name = "LogTopic"
     topic_name = "sensor-data"
     
     create_topic(topic_name)
+    # delete_topic(topic_name)
     # get_topic_info(topic_name)
